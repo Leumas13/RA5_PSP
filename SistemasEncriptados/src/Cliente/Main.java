@@ -4,6 +4,7 @@ package Cliente;
 import data.Mensaje;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.net.ssl.*;
 import java.io.*;
@@ -39,6 +40,7 @@ public class Main {
 
         SecretKey claveSimetrica = null;
         PublicKey clavePublicaServer = null;
+        SecretKey pass = null;
 
 
         Mensaje m = (Mensaje) ois.readObject();
@@ -82,6 +84,13 @@ public class Main {
 
                     System.out.println(new String(resultado, StandardCharsets.UTF_8));
                 }
+                case 204 ->{ //recibe un mensaje con clave híbrida
+                    Cipher cifrador = Cipher.getInstance(pass.getAlgorithm());
+                    cifrador.init(Cipher.DECRYPT_MODE, pass);
+                    byte[] resultado = cifrador.doFinal(m.getCifrado());
+
+                    System.out.println(new String(resultado, StandardCharsets.UTF_8));
+                }
                 case 501 ->{ //Confirmar el intercambio de claves
                     System.out.println(cad);
                 }
@@ -92,7 +101,8 @@ public class Main {
                         Menu
                         1. Enviar un mensaje con cifrado simétrico
                         2. Enviar un mensaje con cifrado asimétrico
-                        3. Firmar un mensaje
+                        3. Enviar un mensaje con cifrado híbrido
+                        4. Firmar un mensaje
                         
                         0. Salir""");
                 cod = Integer.parseInt(sc.nextLine());
@@ -131,7 +141,7 @@ public class Main {
 
                 }
                 case 2 ->{
-                    System.out.println("Esta comunicacion está clave asimétrica");
+                    System.out.println("Esta comunicacion está protegida por clave asimétrica");
                     System.out.print("Escribe el mensaje que se envía con clave asimétrica: ");
 
                     if (clavePublicaServer != null) {
@@ -161,8 +171,50 @@ public class Main {
                     }
                 }
                 case 3 ->{
+                    System.out.println("Esta comunicacion está protegida por cifrado híbrido");
+                    System.out.print("Escribe el mensaje que se envía con clave asimétrica: ");
+                    String mensaje = sc.nextLine();
 
-                    System.out.println("Esta comunicacion por una firma");
+                    KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+                    keyGen.init(256); // Tamaño de la clave
+                    pass = keyGen.generateKey();
+
+                    if (clavePublicaServer != null) {
+                        //cifrar la clave AES con la publica del servidor
+                        Cipher cifrador = Cipher.getInstance(clavePublicaServer.getAlgorithm());
+                        cifrador.init(Cipher.ENCRYPT_MODE, clavePublicaServer);
+                        byte[] claveCifrada = cifrador.doFinal(pass.getEncoded());
+
+                        //cifrar mensaje con la clave AES
+                        Cipher cifradorAES = Cipher.getInstance(pass.getAlgorithm());
+                        cifradorAES.init(Cipher.ENCRYPT_MODE, pass);
+                        byte[] resultadoAES = cifrador.doFinal(mensaje.getBytes());
+
+                        //enviar mensaje y clave cifrada
+                        m.reiniciarCampos();
+                        m.setCodigoMensaje(105);
+                        m.setCifrado(resultadoAES);
+                        m.setClaveCifrada(claveCifrada);
+
+
+                        oos.writeObject(m);
+                        oos.flush();
+                        m = (Mensaje) ois.readObject();
+                    }else{
+                        System.out.println("Conexion fallida, no existe clave simétrica");
+
+                        m.reiniciarCampos();
+                        m.setCodigoMensaje(0);
+                        m.setMensaje("");
+
+                        oos.writeObject(m);
+                        oos.flush();
+                        m = (Mensaje) ois.readObject();
+                    }
+                }
+                case 4 ->{
+
+                    System.out.println("Esta comunicacion esta protegida por una firma");
                     System.out.print("Escribe el mensaje para firmar: ");
 
                     Signature signature = Signature.getInstance("SHA256withRSA");

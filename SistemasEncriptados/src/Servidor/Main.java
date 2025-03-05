@@ -5,6 +5,7 @@ import data.Mensaje;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.*;
 import java.io.*;
 import java.math.BigInteger;
@@ -68,7 +69,7 @@ public class Main {
                     oos.flush();
                     m = (Mensaje)ois.readObject();
                 }
-                case 102->{ //Encripto y Desencripto con la clave simétrica
+                case 102->{ //cifrado simetrico
                     Cipher cifrador = Cipher.getInstance(claveSimetrica.getAlgorithm());
                     cifrador.init(Cipher.DECRYPT_MODE, claveSimetrica);
                     byte[] resultado = cifrador.doFinal(m.getCifrado());
@@ -86,7 +87,7 @@ public class Main {
                     oos.flush();
                     m = (Mensaje)ois.readObject();
                 }
-                case 103->{ //Uso clave privada después de compartir la pública
+                case 103->{ //cifrado asimetrico
                     Cipher cifrador = Cipher.getInstance(clavePrivada.getAlgorithm());
                     cifrador.init(Cipher.DECRYPT_MODE, clavePrivada);
                     byte[] resultado = cifrador.doFinal(m.getCifrado());
@@ -104,7 +105,7 @@ public class Main {
                     oos.flush();
                     m = (Mensaje)ois.readObject();
                 }
-                case 104->{
+                case 104->{ //mensaje firmado
                     Signature signature = Signature.getInstance("SHA256withRSA");
                     signature.initVerify(clavePublicaCliente);
 
@@ -122,6 +123,31 @@ public class Main {
                     oos.writeObject(m);
                     oos.flush();
                     m = (Mensaje) ois.readObject();
+                }
+                case 105->{ //cifrado híbrido
+                    Cipher cifrador = Cipher.getInstance(clavePrivada.getAlgorithm());
+                    cifrador.init(Cipher.DECRYPT_MODE, clavePrivada);
+                    byte[] resultadoClave = cifrador.doFinal(m.getClaveCifrada());
+
+                    SecretKey pass = new SecretKeySpec(resultadoClave, "AES");
+
+                    Cipher cifradorAES = Cipher.getInstance(pass.getAlgorithm());
+                    cifradorAES.init(Cipher.DECRYPT_MODE, pass);
+                    byte[] resultadoAES = cifrador.doFinal(m.getCifrado());
+
+                    String mensaje = new String(resultadoAES, StandardCharsets.UTF_8);
+                    String mensajeVuelta = "tengo tu clave, esta comunicación es segura y tu me enviaste " + mensaje;
+                    cifradorAES.init(Cipher.ENCRYPT_MODE, pass);
+                    resultadoAES = cifradorAES.doFinal(mensajeVuelta.getBytes());
+
+
+                    m.reiniciarCampos();
+                    m.setCodigoMensaje(204);
+                    m.setCifrado(resultadoAES);
+
+                    oos.writeObject(m);
+                    oos.flush();
+                    m = (Mensaje)ois.readObject();
                 }
                 case 0->{
                     m.reiniciarCampos();

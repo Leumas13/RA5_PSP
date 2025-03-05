@@ -9,6 +9,7 @@ public class Mensaje implements Serializable {
     private String mensaje = "";
     private SecretKey claveSimetrica = null;
     private byte[] cifrado = null;
+    private byte[] claveCifrada = null;
     private PublicKey clavePublicaServidor = null;
     private PublicKey clavePublicaCliente = null;
 
@@ -85,7 +86,16 @@ public class Mensaje implements Serializable {
         mensaje = "";
         claveSimetrica = null;
         cifrado = null;
+        claveCifrada = null;
         clavePublicaServidor = null;
         clavePublicaCliente = null;
+    }
+
+    public byte[] getClaveCifrada() {
+        return claveCifrada;
+    }
+
+    public void setClaveCifrada(byte[] claveCifrada) {
+        this.claveCifrada = claveCifrada;
     }
 }
