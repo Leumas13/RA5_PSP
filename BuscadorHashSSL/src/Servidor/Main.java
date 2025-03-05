@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.CertificateException;
+import java.util.HashMap;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -37,6 +38,9 @@ public class Main {
         //Crear fichero de hash
         crearRainbowTable();
 
+        //Cargar hash
+        HashMap<String,String> dic = buscadorMD5();
+
         ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
         ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
 
@@ -59,7 +63,11 @@ public class Main {
             switch(cod){
                 case 101->{
                     m.reiniciarCampos();
-                    m.setMensaje(buscadorMD5(cad));
+                    if(dic.containsKey(cad)) {
+                        m.setMensaje(dic.get(cad));
+                    }else{
+                        m.setMensaje("no esta almacenado");
+                    }
                     m.setCodigoMensaje(201);
 
                     oos.writeObject(m);
@@ -113,17 +121,13 @@ public class Main {
         br.close();
     }
 
-    public static String buscadorMD5(String hash) throws IOException {
+    public static HashMap<String,String> buscadorMD5() throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(new File("Rainbow_Table.txt")));
         String linea;
-        String resultado = "no existe";
-        boolean flag = true;
-        while((linea = br.readLine())!= null && flag){
+        HashMap<String,String> resultado = new HashMap<>();
+        while((linea = br.readLine())!= null){
             String[] cad = linea.split(",");
-            if(hash.equals(cad[0])){
-                resultado = cad[1];
-                flag = false;
-            }
+            resultado.put(cad[0],cad[1]);
         }
         return resultado;
     }
