@@ -153,7 +153,6 @@ public class Main {
                         m.reiniciarCampos();
                         m.setCodigoMensaje(103);
                         m.setCifrado(resultado);
-                        m.setClavePublicaCliente(clavePublicaCliente);
 
                         oos.writeObject(m);
                         oos.flush();
